@@ -35,72 +35,13 @@ provider "helm" {
   }
 }
 
-# Allocate reserved IP if it doesn't exist, or retrieve existing
-resource "digitalocean_reserved_ip" "load_balancer_ip" {
-  region = digitalocean_kubernetes_cluster.my_cluster.region
-
-  # Use count to ensure the floating IP is only allocated if it doesn't exist
-  # count = length(data.digitalocean_floating_ip.load_balancer_ip_existing) > 0 ? 0 : 1
-}
-
-# module "traefik" {
-#   source  = "sculley/traefik/kubernetes"
-#   version = "1.0.2"
-
-# }
-
-# Create traefik namespace
-resource "kubernetes_namespace" "traefik_namespace" {
-  metadata {
-    name = "traefik"
-  }
-}
-
 resource "helm_release" "traefik" {
-  name       = "traefik2"
+  name       = "traefik"
   repository = "https://helm.traefik.io/traefik"
   chart      = "traefik"
-  namespace  = "traefik"
   values = [
     file("${path.module}/values.yaml")
   ]
-}
-
-# Traefik service definition...
-resource "kubernetes_service" "traefik" {
-  metadata {
-    name = "traefik"
-    annotations  = {
-      
-    }
-  }
-
-  spec {
-    # load_balancer_ip = digitalocean_reserved_ip.load_balancer_ip.ip_address # Use the allocated or existing floating IP
-
-    selector = {
-      "app.kubernetes.io/name" = "traefik"
-    }
-
-    port {
-      name = "web"
-      port = 80
-      # target_port = 80
-    }
-
-    port {
-      name = "traefik"
-      port = 9000
-      # target_port = 9000
-    }
-
-    type = "LoadBalancer"
-  }
-}
-
-resource "digitalocean_reserved_ip_assignment" "load_balancer_ip" {
-  ip_address = digitalocean_reserved_ip.load_balancer_ip.ip_address
-  droplet_id = digitalocean_kubernetes_cluster.my_cluster.node_pool[0].nodes[0].droplet_id
 }
 
 # Define feedback-service deployment...
@@ -130,11 +71,70 @@ resource "kubernetes_deployment" "feedback_service" {
           name  = "feedback-service"
           image = "rightpurchase/feedback-service:1.0.1"
           port {
-            # host_port      = 80
             container_port = 80
-            name           = "web"
           }
         }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "feedback_service" {
+  metadata {
+    name = "feedback-service"
+  }
+
+  spec {
+    selector = {
+      app = "feedback-service"
+    }
+
+    port {
+      port = 80
+    }
+
+    type = "NodePort"
+  }
+}
+
+resource "kubernetes_manifest" "feedback_service_ingress_route" {
+
+  manifest = {
+    apiVersion = "traefik.containo.us/v1alpha1"
+    kind       = "IngressRoute"
+    metadata = {
+      name      = "feedback-service"
+      namespace = "default"
+    }
+    spec = {
+      entryPoints = ["web"]
+      routes = [{
+        match = "PathPrefix(`/feedback`)"
+        kind  = "Rule"
+        services = [{
+          name = "feedback-service"
+          port = 80
+        }]
+        middlewares = [{
+          name = "feedback-service-middleware"
+        }]
+      }]
+    }
+  }
+}
+
+resource "kubernetes_manifest" "feedback_service_middleware" {
+
+  manifest = {
+    apiVersion = "traefik.containo.us/v1alpha1"
+    kind       = "Middleware"
+    metadata = {
+      name = "feedback-service-middleware"
+      namespace = "default"
+    }
+    spec = {
+      stripPrefix = {
+        prefixes = ["/feedback"]
       }
     }
   }
