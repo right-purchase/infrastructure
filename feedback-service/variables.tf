@@ -7,5 +7,10 @@ variable "DO_TOKEN" {
 variable "cluster_name" {
   description = "The name of the Kubernetes cluster created"
   type        = string
-  default = "right-purchase-cluster"
+  default     = "right-purchase-cluster"
+}
+
+variable "FORM_URL" {
+  description = "The URL of the form service"
+  type        = string
 }

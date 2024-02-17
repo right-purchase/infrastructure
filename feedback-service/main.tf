@@ -40,6 +40,12 @@ resource "kubernetes_deployment" "feedback_service" {
         container {
           name  = "feedback-service"
           image = "rightpurchase/feedback-service:1.0.1"
+
+          env {
+            name  = "FORM_URL"
+            value = var.FORM_URL
+          }
+
           port {
             container_port = 80
           }
