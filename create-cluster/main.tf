@@ -32,7 +32,26 @@ resource "helm_release" "traefik" {
   name       = "traefik"
   repository = "https://helm.traefik.io/traefik"
   chart      = "traefik"
+  version    = "26.0.0"
   values = [
     file("${path.module}/values.yaml")
   ]
+
+  set {
+    name  = "service.name"
+    value = "traefik-load-balancer"
+  }
 }
+
+provider "kubernetes" {
+  host                   = digitalocean_kubernetes_cluster.my_cluster.endpoint
+  token                  = digitalocean_kubernetes_cluster.my_cluster.kube_config[0].token
+  cluster_ca_certificate = base64decode(digitalocean_kubernetes_cluster.my_cluster.kube_config[0].cluster_ca_certificate)
+}
+
+data "kubernetes_service" "traefik" {
+  metadata {
+    name = "traefik"
+  }
+}
+

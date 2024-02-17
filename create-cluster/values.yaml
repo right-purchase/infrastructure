@@ -100,6 +100,8 @@ deployment:
   #     port: 9000
   #     host: localhost
   #     scheme: HTTP
+  # -- Set a runtimeClassName on pod
+  runtimeClassName:
 
 # -- Pod disruption budget
 podDisruptionBudget:
@@ -157,7 +159,7 @@ ingressRoute:
     # -- Specify the allowed entrypoints to use for the dashboard ingress route, (e.g. traefik, web, websecure).
     # By default, it's using traefik entrypoint, which is not exposed.
     # /!\ Do not expose your dashboard without any protection over the internet /!\
-    entryPoints: ["traefik", "web"]
+    entryPoints: ["traefik"]
     # -- Additional ingressRoute middlewares (e.g. for authentication)
     middlewares: []
     # -- TLS options (e.g. secret containing certificate)
@@ -572,13 +574,7 @@ globalArguments:
 # -- Additional arguments to be passed at Traefik's binary
 # All available options available on https://docs.traefik.io/reference/static-configuration/cli/
 ## Use curly braces to pass values: `helm install --set="additionalArguments={--providers.kubernetesingress.ingressclass=traefik-internal,--log.level=DEBUG}"`
-additionalArguments:
- - "--api=true"
- - "--api.dashboard=true"
- - "--api.insecure=true"
-#  - "--traefik.http.routers.feedback-service.rule=PathPrefix(`/feedback`)"
-#  - "--traefik.http.routers.feedback-service.middlewares=strip-prefix"
-#  - "--traefik.http.middlewares.strip-prefix.stripprefix.prefixes=/feedback"
+additionalArguments: []
 #  - "--providers.kubernetesingress.ingressclass=traefik-internal"
 #  - "--log.level=DEBUG"
 
@@ -630,7 +626,7 @@ ports:
     # -- You SHOULD NOT expose the traefik port on production deployments.
     # If you want to access it from outside your cluster,
     # use `kubectl port-forward` or create a secure ingress
-    expose: true
+    expose: false
     # -- The exposed port for this service
     exposedPort: 9000
     # -- The port protocol (TCP/UDP)
