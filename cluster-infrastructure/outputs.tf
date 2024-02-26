@@ -12,3 +12,8 @@ output "helm_api_gateway_load_balancer_ip" {
   description = "The IP address of the API Gateway service"
   value       = data.kubernetes_service.traefik.status.0.load_balancer.0.ingress.0.ip
 }
+
+output "domain_name" {
+  description = "The domain name for the API Gateway service"
+  value       = var.DNS_NAME
+}

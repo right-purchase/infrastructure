@@ -3,15 +3,15 @@ provider "digitalocean" {
   token = var.DO_TOKEN
 }
 
-data "digitalocean_kubernetes_cluster" "my_cluster" {
-  name = var.cluster_name
-}
-
 # Define Kubernetes provider
 provider "kubernetes" {
   host                   = data.digitalocean_kubernetes_cluster.my_cluster.endpoint
   token                  = data.digitalocean_kubernetes_cluster.my_cluster.kube_config[0].token
   cluster_ca_certificate = base64decode(data.digitalocean_kubernetes_cluster.my_cluster.kube_config[0].cluster_ca_certificate)
+}
+
+data "digitalocean_kubernetes_cluster" "my_cluster" {
+  name = var.cluster_name
 }
 
 # Define feedback-service deployment...
@@ -83,9 +83,9 @@ resource "kubernetes_manifest" "feedback_service_ingress_route" {
       namespace = "default"
     }
     spec = {
-      entryPoints = ["web"]
+      entryPoints = ["web", "websecure"]
       routes = [{
-        match = "PathPrefix(`/feedback`)"
+        match = "Host(`testedafarinha.website`) && PathPrefix(`/feedback`)"
         kind  = "Rule"
         services = [{
           name = "feedback-service"
@@ -94,6 +94,12 @@ resource "kubernetes_manifest" "feedback_service_ingress_route" {
         middlewares = [{
           name = "feedback-service-middleware"
         }]
+        tls = {
+          certResolver = "letsencrypt"
+          domains = [{
+            main = "testedafarinha.website"
+          }]
+        }
       }]
     }
   }
