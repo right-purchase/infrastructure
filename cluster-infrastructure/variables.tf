@@ -9,3 +9,16 @@ variable "DNS_NAME" {
   type        = string
   default     = "testedafarinha.website"
 }
+
+variable "CERT_PATH" {
+  description = "Path to the SSL/TLS certificate file"
+  type        = string
+  default     = "certificates/fullchain.pem"
+}
+
+variable "KEY_PATH" {
+  description = "Path to the SSL/TLS key file"
+  type        = string
+  default     = "certificates/privkey.pem"
+
+}

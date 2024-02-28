@@ -34,21 +34,6 @@ resource "digitalocean_kubernetes_cluster" "my_cluster" {
     max_nodes  = 3
   }
 }
-
-resource "kubernetes_persistent_volume_claim" "traefik_pvc" {
-  metadata {
-    name = "traefik-pvc"
-  }
-  spec {
-    access_modes = ["ReadWriteOnce"]
-    resources {
-      requests = {
-        storage = "128Mi"
-      }
-    }
-  }
-}
-
 resource "helm_release" "traefik" {
   name       = "traefik"
   repository = "https://helm.traefik.io/traefik"
@@ -62,12 +47,6 @@ resource "helm_release" "traefik" {
     name  = "service.name"
     value = "traefik-load-balancer"
   }
-
-  set {
-    name  = "persistence.existingClaim"
-    value = kubernetes_persistent_volume_claim.traefik_pvc.metadata.0.name
-  }
-
 }
 
 data "kubernetes_service" "traefik" {
@@ -94,4 +73,34 @@ resource "digitalocean_record" "www_subdomain" {
   name   = "www"
   value  = "${digitalocean_domain.root_domain.name}."
   ttl    = 1800 # TTL in seconds (adjust as needed)
+}
+
+resource "kubernetes_secret" "tls_store" {
+  metadata {
+    name = "tls-store"
+  }
+
+  data = {
+    "tls.crt" = file(var.CERT_PATH)
+    "tls.key" = file(var.KEY_PATH)
+  }
+
+  type = "kubernetes.io/tls"
+}
+
+resource "kubernetes_manifest" "tls_store" {
+
+  manifest = {
+    apiVersion = "traefik.containo.us/v1alpha1"
+    kind       = "TLSStore" #See https://doc.traefik.io/traefik/v2.3/routing/providers/kubernetes-crd/#kind-tlsstore
+    metadata = {
+      name      = "default"
+      namespace = "default"
+    }
+    spec = {
+      defaultCertificate = {
+        secretName = kubernetes_secret.tls_store.metadata.0.name
+      }
+    }
+  }
 }

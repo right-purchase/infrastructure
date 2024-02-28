@@ -15,9 +15,9 @@ data "digitalocean_kubernetes_cluster" "my_cluster" {
 }
 
 # Define feedback-service deployment...
-resource "kubernetes_deployment" "feedback_service" {
+resource "kubernetes_deployment" "app_service" {
   metadata {
-    name = "feedback-service"
+    name = var.service_name
   }
 
   spec {
@@ -25,21 +25,21 @@ resource "kubernetes_deployment" "feedback_service" {
 
     selector {
       match_labels = {
-        app = "feedback-service"
+        app = var.service_name
       }
     }
 
     template {
       metadata {
         labels = {
-          app = "feedback-service"
+          app = var.service_name
         }
       }
 
       spec {
         container {
-          name  = "feedback-service"
-          image = "rightpurchase/feedback-service:1.0.1"
+          name  = var.service_name
+          image = var.service_image
 
           env {
             name  = "FORM_URL"
@@ -55,14 +55,14 @@ resource "kubernetes_deployment" "feedback_service" {
   }
 }
 
-resource "kubernetes_service" "feedback_service" {
+resource "kubernetes_service" "app_service" {
   metadata {
-    name = "feedback-service"
+    name = kubernetes_deployment.app_service.metadata.0.name
   }
 
   spec {
     selector = {
-      app = "feedback-service"
+      app = kubernetes_deployment.app_service.metadata.0.name
     }
 
     port {
@@ -73,45 +73,48 @@ resource "kubernetes_service" "feedback_service" {
   }
 }
 
-resource "kubernetes_manifest" "feedback_service_ingress_route" {
+resource "kubernetes_manifest" "app_service_ingress_route" {
 
   manifest = {
     apiVersion = "traefik.containo.us/v1alpha1"
-    kind       = "IngressRoute"
+    kind       = "IngressRoute" #See https://doc.traefik.io/traefik/v2.3/routing/providers/kubernetes-crd/#kind-ingressroute
     metadata = {
-      name      = "feedback-service"
+      name      = kubernetes_deployment.app_service.metadata.0.name
       namespace = "default"
     }
     spec = {
-      entryPoints = ["web", "websecure"]
+      entryPoints = ["websecure"]
       routes = [{
-        match = "Host(`testedafarinha.website`) && PathPrefix(`/feedback`)"
+        match = "Host(`${var.domain_name}`) && PathPrefix(`/feedback`)"
         kind  = "Rule"
         services = [{
-          name = "feedback-service"
+          name = kubernetes_deployment.app_service.metadata.0.name
           port = 80
         }]
         middlewares = [{
-          name = "feedback-service-middleware"
+          name = "${kubernetes_deployment.app_service.metadata.0.name}-middleware"
         }]
-        tls = {
-          certResolver = "letsencrypt"
-          domains = [{
-            main = "testedafarinha.website"
-          }]
-        }
       }]
+      tls = {
+        store = {
+          name = "default"
+        }
+        domains = [{
+          main = var.domain_name,
+          sans = ["www.${var.domain_name}"]
+        }]
+      }
     }
   }
 }
 
-resource "kubernetes_manifest" "feedback_service_middleware" {
+resource "kubernetes_manifest" "app_service_middleware" {
 
   manifest = {
     apiVersion = "traefik.containo.us/v1alpha1"
     kind       = "Middleware"
     metadata = {
-      name      = "feedback-service-middleware"
+      name      = "${kubernetes_deployment.app_service.metadata.0.name}-middleware"
       namespace = "default"
     }
     spec = {

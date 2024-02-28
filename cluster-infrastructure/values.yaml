@@ -61,22 +61,23 @@ deployment:
   #     path: /var/run/statsd-exporter
   # -- Additional initContainers (e.g. for setting file permission as shown below)
   initContainers:
+    []
     # The "volume-permissions" init container is required if you run into permission issues.
     # Related issue: https://github.com/traefik/traefik-helm-chart/issues/396
-    - name: volume-permissions
-      image: busybox:latest
-      command: [
-          "sh",
-          "-c",
-          "mkdir /data/traefik; chown 65532:65532 /data/traefik; chmod -v 700 /data/traefik; ls -la /data/traefik",
-        ]
-      securityContext:
-        runAsNonRoot: false
-        runAsGroup: 0
-        runAsUser: 0
-      volumeMounts:
-        - name: data
-          mountPath: /data
+    # - name: volume-permissions
+    #   image: busybox:latest
+    #   command: [
+    #       "sh",
+    #       "-c",
+    #       "mkdir /data/traefik; chown 65532:65532 /data/traefik; chmod -v 700 /data/traefik; ls -la /data/traefik",
+    #     ]
+    #   securityContext:
+    #     runAsNonRoot: false
+    #     runAsGroup: 0
+    #     runAsUser: 0
+    #   volumeMounts:
+    #     - name: data
+    #       mountPath: /data
   # -- Use process namespace sharing
   shareProcessNamespace: false
   # -- Custom pod DNS policy. Apply if `hostNetwork: true`
@@ -861,7 +862,7 @@ persistence:
   # -- Enable persistence using Persistent Volume Claims
   # ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
   # It can be used to store TLS certificates, see `storage` in certResolvers
-  enabled: true
+  enabled: false
   name: data
   #  existingClaim: ""
   accessMode: ReadWriteOnce
